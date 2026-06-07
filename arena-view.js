@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var PAD = 36;
+  var PAD = 18;
   var PARTICLE_R = 14;
   var BOSS_R = 20;
 
@@ -119,6 +119,13 @@
   };
 
   var DEFAULT_PALETTE = { dark: "ocean", light: "snow" };
+  var LOG_ROW_SELECTOR = "span.u, u";
+
+  function isLogRowNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    if (node.tagName === "U") return true;
+    return node.tagName === "SPAN" && node.classList && node.classList.contains("u");
+  }
 
   function clampNum(v, min, max) {
     return Math.max(min, Math.min(max, v));
@@ -154,6 +161,7 @@
     this.tone = "dark";
     this.palette = "ocean";
     this._floatReady = false;
+    this.lastActionCaster = null;
   }
 
   ArenaView.prototype.attachDraggable = function (el, opts) {
@@ -550,6 +558,7 @@
     this.winner = null;
     this.battleEnded = false;
     this._fastForwardSent = false;
+    this.lastActionCaster = null;
     this.playerList = [];
     this.players = {};
     this.projectiles = [];
@@ -676,14 +685,14 @@
     if (!n) return;
     var cx = this.w / 2;
     var cy = this.h / 2;
-    var rx = Math.max(60, (this.w - PAD * 2) / 2 - 20);
-    var ry = Math.max(60, (this.h - PAD * 2) / 2 - 20);
+    var rx = Math.max(80, (this.w - PAD * 2) / 2 - 8);
+    var ry = Math.max(80, (this.h - PAD * 2) / 2 - 8);
     for (var i = 0; i < n; i++) {
       var p = alive[i];
       if (!force && p.placed) continue;
       var angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-      p.x = cx + Math.cos(angle) * rx * (0.65 + (i % 3) * 0.08);
-      p.y = cy + Math.sin(angle) * ry * (0.65 + (i % 2) * 0.1);
+      p.x = cx + Math.cos(angle) * rx * (0.82 + (i % 3) * 0.06);
+      p.y = cy + Math.sin(angle) * ry * (0.82 + (i % 2) * 0.08);
       var c = this.clamp(p.x, p.y, p.r);
       p.x = c.x;
       p.y = c.y;
@@ -730,8 +739,8 @@
       detail: detailEl ? detailEl.textContent.replace(/\s+/g, " ").trim() : "",
       x: this.w / 2,
       y: this.h / 2,
-      vx: (Math.random() - 0.5) * 1.2,
-      vy: (Math.random() - 0.5) * 1.2,
+      vx: (Math.random() - 0.5) * 2.2,
+      vy: (Math.random() - 0.5) * 2.2,
       r: isBoss ? BOSS_R : PARTICLE_R,
       hp: 1,
       maxHp: 1,
@@ -832,30 +841,167 @@
     return best;
   };
 
-  ArenaView.prototype.findPlayersFromNode = function (node) {
-    var found = [];
-    var used = {};
+  ArenaView.prototype.playerFromBody = function (body) {
+    if (!body) return null;
+    var m = (body.className || "").match(/pid\d+/);
+    if (m && this.players[m[0]]) return this.players[m[0]];
+    var nm = body.querySelector(".name");
+    if (nm) return this.findPlayerByName(nm.textContent);
+    return null;
+  };
+
+  ArenaView.prototype.playerEdgePos = function (p, toward) {
+    if (!p) return { x: 0, y: 0 };
+    if (!toward) return { x: p.x, y: p.y };
+    var dx = toward.x - p.x;
+    var dy = toward.y - p.y;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 0.01) return { x: p.x, y: p.y };
+    return { x: p.x + (dx / len) * p.r, y: p.y + (dy / len) * p.r };
+  };
+
+  ArenaView.prototype.resolveBattleActors = function (node, text) {
+    text = text || "";
+    var caster = null;
+    var target = null;
+    var bodies = [];
     if (node && node.querySelectorAll) {
-      var bodies = node.querySelectorAll(".plr_body");
-      for (var i = 0; i < bodies.length; i++) {
-        var cls = bodies[i].className || "";
-        var m = cls.match(/pid\d+/);
-        if (m && this.players[m[0]] && !used[m[0]]) {
-          found.push(this.players[m[0]]);
-          used[m[0]] = true;
-        }
+      bodies = Array.prototype.slice.call(node.querySelectorAll(".plr_body"));
+    }
+    var isResultRow = !!(node && (node.querySelector(".damage") || node.querySelector(".recover")));
+
+    for (var i = 0; i < bodies.length; i++) {
+      var p = this.playerFromBody(bodies[i]);
+      if (!p) continue;
+      if (isResultRow) {
+        if (!target) target = p;
+      } else if (i === 0) {
+        caster = p;
+      } else if (i === 1) {
+        target = p;
+      } else if (!target) {
+        target = p;
       }
-      if (!found.length) {
-        var names = node.querySelectorAll(".name");
-        for (var j = 0; j < names.length; j++) {
-          var p = this.findPlayerByName(names[j].textContent);
-          if (p && !used[p.key]) {
-            found.push(p);
-            used[p.key] = true;
-          }
+    }
+
+    if (!caster && !target && node && node.querySelectorAll) {
+      var names = node.querySelectorAll(".name");
+      for (var j = 0; j < names.length; j++) {
+        var byName = this.resolvePlayerFromNode(names[j]);
+        if (!byName) continue;
+        if (isResultRow) {
+          if (!target) target = byName;
+        } else if (!caster) {
+          caster = byName;
+        } else if (!target) {
+          target = byName;
         }
       }
     }
+
+    if (!caster && !target) {
+      var fromText = this.findPlayersInText(text);
+      if (fromText.length) caster = fromText[0];
+      if (fromText.length > 1) target = fromText[1];
+    }
+
+    if (isResultRow) {
+      if (!target) target = this.resolvePlayerFromNode(node);
+      if (!caster || caster === target) caster = this.lastActionCaster || null;
+      if (!caster && target) caster = this.inferMeleeAttacker(target);
+    } else if (caster) {
+      this.lastActionCaster = caster;
+      if (!target) target = this.inferTargetFromText(text, caster);
+    }
+
+    if (!caster && target) caster = this.lastActionCaster || null;
+
+    return { caster: caster, target: target };
+  };
+
+  ArenaView.prototype.getPlayerByKey = function (key) {
+    if (!key) return null;
+    if (this.players[key]) return this.players[key];
+    for (var i = 0; i < this.playerList.length; i++) {
+      if (this.playerList[i].key === key) return this.playerList[i];
+    }
+    return null;
+  };
+
+  ArenaView.prototype.resolveLinkPair = function (caster, target) {
+    if (!caster) return null;
+    var to = target;
+    if (!to || to === caster) to = this.inferMeleeTarget(caster);
+    if (!to || to === caster) return null;
+    if (typeof caster.x !== "number" || typeof to.x !== "number") return null;
+    return { from: caster, to: to };
+  };
+
+  ArenaView.prototype.inferMeleeTarget = function (caster) {
+    if (!caster) return null;
+    var best = null;
+    var bestD = Infinity;
+    for (var i = 0; i < this.playerList.length; i++) {
+      var p = this.playerList[i];
+      if (!p.alive || p.dying || p === caster) continue;
+      var dx = p.x - caster.x;
+      var dy = p.y - caster.y;
+      var d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best;
+  };
+
+  ArenaView.prototype.inferMeleeAttacker = function (target) {
+    if (!target) return null;
+    var best = null;
+    var bestD = Infinity;
+    for (var i = 0; i < this.playerList.length; i++) {
+      var p = this.playerList[i];
+      if (!p.alive || p.dying || p === target) continue;
+      var dx = p.x - target.x;
+      var dy = p.y - target.y;
+      var d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best;
+  };
+
+  ArenaView.prototype.resolveVisualTarget = function (action, caster, target) {
+    if (caster && target && target !== caster) return target;
+    if (!caster) return null;
+    return this.inferMeleeTarget(caster);
+  };
+
+  ArenaView.prototype.inferTargetFromText = function (text, caster) {
+    if (!text || !caster) return null;
+    var patterns = [
+      /对\s*([^，。；\s]{1,20}?)\s*(?:发起|使用|设下|写下|守护|洗脑|吞噬)/,
+      /向\s*([^，。；\s]{1,20}?)\s*(?:发起|使用|施放)/,
+      /到\s*([^，。；\s]{1,20}?)\s*(?:身后|面前)/,
+      /与\s*([^，。；\s]{1,20}?)\s*(?:互换|接触)/
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      var m = text.match(patterns[i]);
+      if (m && m[1]) {
+        var p = this.findPlayerByName(m[1]);
+        if (p && p !== caster) return p;
+      }
+    }
+    return null;
+  };
+
+  ArenaView.prototype.findPlayersFromNode = function (node) {
+    var roles = this.resolveBattleActors(node, (node && node.textContent) || "");
+    var found = [];
+    if (roles.caster) found.push(roles.caster);
+    if (roles.target && roles.target !== roles.caster) found.push(roles.target);
     if (found.length) return found;
     return this.findPlayersInText((node && node.textContent) || "");
   };
@@ -1030,7 +1176,7 @@
     if (this.battleEnded) return;
     var pbody = this.doc.querySelector("#md5 .pbody");
     if (!pbody) return;
-    var us = pbody.querySelectorAll("u");
+    var us = pbody.querySelectorAll(LOG_ROW_SELECTOR);
     for (var i = us.length - 1; i >= 0; i--) {
       var row = us[i];
       var txt = row.textContent || "";
@@ -1054,32 +1200,73 @@
     return STYLES[kind] || STYLES.generic;
   };
 
-  ArenaView.prototype.spawnBeam = function (from, to, color, style) {
-    if (!from || !to || !style.beam) return;
+  ArenaView.prototype.resolveBeamEndpoints = function (ef) {
+    var fromP = this.getPlayerByKey(ef.fromKey);
+    var toP = this.getPlayerByKey(ef.toKey);
+    if (fromP && toP) {
+      return {
+        x1: this.playerEdgePos(fromP, toP).x,
+        y1: this.playerEdgePos(fromP, toP).y,
+        x2: this.playerEdgePos(toP, fromP).x,
+        y2: this.playerEdgePos(toP, fromP).y
+      };
+    }
+    if (!fromP && toP) {
+      var top = { x: toP.x, y: PAD };
+      return {
+        x1: toP.x,
+        y1: PAD,
+        x2: this.playerEdgePos(toP, top).x,
+        y2: this.playerEdgePos(toP, top).y
+      };
+    }
+    return { x1: ef.x1, y1: ef.y1, x2: ef.x2, y2: ef.y2 };
+  };
+
+  ArenaView.prototype.spawnActionLink = function (from, to, color, opts) {
+    if (!from || !to || from === to) return;
+    opts = opts || {};
+    var src = this.playerEdgePos(from, to);
+    var dst = this.playerEdgePos(to, from);
+    var dx = dst.x - src.x;
+    var dy = dst.y - src.y;
+    if (dx * dx + dy * dy < 4) return;
     this.effects.push({
-      kind: "beam",
-      x1: from.x, y1: from.y,
-      x2: to.x, y2: to.y,
-      color: color,
-      lineWidth: style.lineWidth,
-      dash: style.dash,
-      shape: style.shape,
-      life: 0.35,
-      maxLife: 0.35
+      kind: "link",
+      x1: src.x, y1: src.y,
+      x2: dst.x, y2: dst.y,
+      fromKey: from.key,
+      toKey: to.key,
+      color: color || "#ff8844",
+      lineWidth: opts.lineWidth || 5,
+      life: opts.life || 1.1,
+      maxLife: opts.life || 1.1
+    });
+  };
+
+  ArenaView.prototype.spawnBeam = function (from, to, color, style, opts) {
+    if (!from || !to || !style) return;
+    if (!style.beam) return;
+    this.spawnActionLink(from, to, color, {
+      lineWidth: style.lineWidth || 3,
+      life: (opts && opts.life) || 0.55
     });
   };
 
   ArenaView.prototype.spawnProjectile = function (from, to, color, style) {
-    if (!style.speed) return;
-    var dx = to.x - from.x;
-    var dy = to.y - from.y;
+    if (!from || !to || !style || !style.speed) return;
+    var src = this.playerEdgePos(from, to);
+    var dst = this.playerEdgePos(to, from);
+    var dx = dst.x - src.x;
+    var dy = dst.y - src.y;
     var len = Math.sqrt(dx * dx + dy * dy) || 1;
     this.projectiles.push({
-      x: from.x,
-      y: from.y,
+      x: src.x,
+      y: src.y,
       vx: (dx / len) * style.speed,
       vy: (dy / len) * style.speed,
       target: to,
+      fromKey: from.key,
       color: color || "#ffffff",
       r: style.projR || 5,
       shape: style.shape,
@@ -1091,12 +1278,13 @@
   ArenaView.prototype.applyActionVisual = function (action, caster, target) {
     var style = this.getStyle(action.kind);
     var color = action.color;
+    var visualTarget = this.resolveVisualTarget(action, caster, target);
+    var hasDistinctTarget = caster && visualTarget && visualTarget !== caster;
 
-    if (target && target !== caster) {
-      this.spawnBeam(caster, target, color, style);
-      this.spawnProjectile(caster, target, color, style);
-      caster.vx += (target.x - caster.x) * 0.025;
-      caster.vy += (target.y - caster.y) * 0.025;
+    if (hasDistinctTarget) {
+      if (style.speed) this.spawnProjectile(caster, visualTarget, color, style);
+      caster.vx += (visualTarget.x - caster.x) * 0.04;
+      caster.vy += (visualTarget.y - caster.y) * 0.04;
     } else if (target === caster || !target) {
       this.effects.push({
         kind: "ring", x: caster.x, y: caster.y, r: caster.r, maxR: caster.r * 2.4,
@@ -1106,9 +1294,22 @@
 
     switch (action.kind) {
       case "lightning":
-        if (target) {
+        if (hasDistinctTarget) {
+          var lFrom = this.playerEdgePos(caster, target);
+          var lTo = this.playerEdgePos(target, caster);
           this.effects.push({
-            kind: "bolt", x: target.x, y: PAD, tx: target.x, ty: target.y,
+            kind: "bolt",
+            x1: lFrom.x, y1: lFrom.y, x2: lTo.x, y2: lTo.y,
+            fromKey: caster.key, toKey: target.key,
+            color: color, lineWidth: 5, life: 0.5, maxLife: 0.5
+          });
+          target.flash = 0.55;
+        } else if (target) {
+          var skyEdge = this.playerEdgePos(target, { x: target.x, y: PAD });
+          this.effects.push({
+            kind: "bolt",
+            x1: target.x, y1: PAD, x2: skyEdge.x, y2: skyEdge.y,
+            toKey: target.key,
             color: color, lineWidth: 5, life: 0.5, maxLife: 0.5
           });
           target.flash = 0.55;
@@ -1213,12 +1414,8 @@
         }
         break;
       case "exchange":
-        if (target && target !== caster) {
-          this.effects.push({
-            kind: "beam", x1: target.x, y1: target.y, x2: caster.x, y2: caster.y,
-            color: color, lineWidth: 3, dash: [8, 6], shape: "diamond",
-            life: 0.45, maxLife: 0.45
-          });
+        if (hasDistinctTarget) {
+          this.spawnActionLink(caster, target, color, { life: 0.55, lineWidth: 3 });
           this.effects.push({
             kind: "ring", x: (caster.x + target.x) / 2, y: (caster.y + target.y) / 2,
             r: 8, maxR: 40, life: 0.5, maxLife: 0.5, color: color, lineWidth: 3
@@ -1226,7 +1423,11 @@
         }
         break;
       case "counter":
-        if (target) target.flash = 0.35;
+        if (hasDistinctTarget) {
+          target.flash = 0.35;
+        } else if (target) {
+          target.flash = 0.35;
+        }
         break;
       case "buff":
       case "reraise":
@@ -1286,8 +1487,7 @@
     if (!caster) return;
 
     if (target && target !== caster) {
-      this.spawnBeam(caster, target, color, style);
-      this.spawnProjectile(caster, target, color, style);
+      if (style.speed) this.spawnProjectile(caster, target, color, style);
     } else {
       this.effects.push({
         kind: "ring", x: caster.x, y: caster.y, r: caster.r, maxR: caster.r * 2.8,
@@ -1340,9 +1540,20 @@
     var recEl = node.querySelector(".recover");
     var namedie = node.querySelector(".namedie");
 
+    var roles = this.resolveBattleActors(node, text);
+    var caster = roles.caster;
+    var target = roles.target;
     var actors = this.findPlayersFromNode(node);
-    var caster = actors[0] || null;
-    var target = actors.length > 1 ? actors[1] : (actors[0] || null);
+    var action = this.parseActionFromNode(node, text);
+    var linkPair = this.resolveLinkPair(caster, target);
+
+    if (linkPair) {
+      var linkColor = "#ffaa44";
+      if (node.querySelector(".damage")) linkColor = "#ff3333";
+      else if (node.querySelector(".recover")) linkColor = "#33ee88";
+      else if (action && action.color) linkColor = action.color;
+      this.spawnActionLink(linkPair.from, linkPair.to, linkColor, { life: 1.15, lineWidth: 5 });
+    }
 
     if (namedie) {
       var dead = this.resolvePlayerFromNode(namedie);
@@ -1356,9 +1567,6 @@
         kind: "hit", x: target.x, y: target.y - target.r - 8,
         life: 0.5, maxLife: 0.5, color: "#ff5555", text: "-" + dmg, lineWidth: 3
       });
-      if (caster && caster !== target) {
-        this.spawnBeam(caster, target, "#ff6666", { beam: true, lineWidth: 2, dash: [4, 4], shape: "slash" });
-      }
     }
 
     if (recEl && target) {
@@ -1368,8 +1576,6 @@
         life: 0.7, maxLife: 0.7, color: "#44ff99", text: "+" + healAmt, lineWidth: 2
       });
     }
-
-    var action = this.parseActionFromNode(node, text);
 
     if (action && action.kind === "death") {
       if (target) this.killPlayer(target, true);
@@ -1432,9 +1638,9 @@
           if (n.classList && (n.classList.contains("welcome") || n.classList.contains("welcome2"))) {
             self.resetArena();
           }
-          if (n.tagName === "U") self.handleRow(n);
+          if (isLogRowNode(n)) self.handleRow(n);
           else {
-            var us = n.querySelectorAll ? n.querySelectorAll("u") : [];
+            var us = n.querySelectorAll ? n.querySelectorAll(LOG_ROW_SELECTOR) : [];
             for (var j = 0; j < us.length; j++) self.handleRow(us[j]);
           }
         }
@@ -1502,12 +1708,12 @@
       var p = alive[i];
       if (this.battleEnded && p !== this.winner) continue;
       if (this.randomMotion && !p.isWinner) {
-        p.vx += (Math.random() - 0.5) * 0.65;
-        p.vy += (Math.random() - 0.5) * 0.65;
+        p.vx += (Math.random() - 0.5) * 1.15;
+        p.vy += (Math.random() - 0.5) * 1.15;
         var sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        if (sp > 2.8) {
-          p.vx = (p.vx / sp) * 2.8;
-          p.vy = (p.vy / sp) * 2.8;
+        if (sp > 4.5) {
+          p.vx = (p.vx / sp) * 4.5;
+          p.vy = (p.vy / sp) * 4.5;
         }
       }
       p.vx *= 0.92;
@@ -1635,7 +1841,62 @@
     ctx.restore();
   };
 
+  ArenaView.prototype.drawActionLink = function (ctx, ef, alpha) {
+    var pts = this.resolveBeamEndpoints(ef);
+    var dx = pts.x2 - pts.x1;
+    var dy = pts.y2 - pts.y1;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 2) return;
+
+    var lw = ef.lineWidth || 5;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.globalAlpha = alpha * 0.35;
+    ctx.strokeStyle = ef.color;
+    ctx.lineWidth = lw + 6;
+    ctx.shadowColor = ef.color;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.moveTo(pts.x1, pts.y1);
+    ctx.lineTo(pts.x2, pts.y2);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = alpha * 0.95;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = Math.max(2, lw - 1);
+    ctx.beginPath();
+    ctx.moveTo(pts.x1, pts.y1);
+    ctx.lineTo(pts.x2, pts.y2);
+    ctx.stroke();
+
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = ef.color;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(pts.x1, pts.y1);
+    ctx.lineTo(pts.x2, pts.y2);
+    ctx.stroke();
+
+    var ux = dx / len;
+    var uy = dy / len;
+    var ax = pts.x2 - ux * 10;
+    var ay = pts.y2 - uy * 10;
+    ctx.fillStyle = ef.color;
+    ctx.beginPath();
+    ctx.moveTo(pts.x2, pts.y2);
+    ctx.lineTo(ax - uy * 7, ay + ux * 7);
+    ctx.lineTo(ax + uy * 7, ay - ux * 7);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  };
+
   ArenaView.prototype.drawBeam = function (ctx, ef, alpha) {
+    var pts = this.resolveBeamEndpoints(ef);
     ctx.strokeStyle = ef.color;
     ctx.lineWidth = ef.lineWidth || 3;
     ctx.globalAlpha = alpha;
@@ -1643,28 +1904,32 @@
     else ctx.setLineDash([]);
 
     if (ef.shape === "slash") {
-      var mx = (ef.x1 + ef.x2) / 2;
-      var my = (ef.y1 + ef.y2) / 2;
-      var dx = ef.x2 - ef.x1;
-      var dy = ef.y2 - ef.y1;
+      var dx = pts.x2 - pts.x1;
+      var dy = pts.y2 - pts.y1;
       var len = Math.sqrt(dx * dx + dy * dy) || 1;
-      var px = -dy / len * 12;
-      var py = dx / len * 12;
+      var px = -dy / len;
+      var py = dx / len;
       ctx.beginPath();
-      ctx.moveTo(mx - px, my - py);
-      ctx.lineTo(mx + px, my + py);
+      ctx.moveTo(pts.x1, pts.y1);
+      ctx.lineTo(pts.x2, pts.y2);
+      ctx.stroke();
+      var mark = Math.min(16, Math.max(10, len * 0.08));
+      ctx.lineWidth = (ef.lineWidth || 3) + 1;
+      ctx.beginPath();
+      ctx.moveTo(pts.x2 - px * mark - py * mark * 0.55, pts.y2 - py * mark + px * mark * 0.55);
+      ctx.lineTo(pts.x2 + px * mark + py * mark * 0.55, pts.y2 + py * mark - px * mark * 0.55);
       ctx.stroke();
     } else if (ef.shape === "bolt") {
       ctx.beginPath();
-      ctx.moveTo(ef.x1, ef.y1);
-      ctx.lineTo((ef.x1 + ef.x2) / 2 + 15, (ef.y1 + ef.y2) / 2 - 10);
-      ctx.lineTo((ef.x1 + ef.x2) / 2 - 10, (ef.y1 + ef.y2) / 2 + 8);
-      ctx.lineTo(ef.x2, ef.y2);
+      ctx.moveTo(pts.x1, pts.y1);
+      ctx.lineTo((pts.x1 + pts.x2) / 2 + 15, (pts.y1 + pts.y2) / 2 - 10);
+      ctx.lineTo((pts.x1 + pts.x2) / 2 - 10, (pts.y1 + pts.y2) / 2 + 8);
+      ctx.lineTo(pts.x2, pts.y2);
       ctx.stroke();
     } else {
       ctx.beginPath();
-      ctx.moveTo(ef.x1, ef.y1);
-      ctx.lineTo(ef.x2, ef.y2);
+      ctx.moveTo(pts.x1, pts.y1);
+      ctx.lineTo(pts.x2, pts.y2);
       ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -1801,8 +2066,8 @@
       var alpha = Math.max(0, ef.life / (ef.maxLife || 1));
       ctx.globalAlpha = alpha;
 
-      if (ef.kind === "beam") {
-        this.drawBeam(ctx, ef, alpha);
+      if (ef.kind === "link" || ef.kind === "beam") {
+        continue;
       } else if (ef.kind === "ring" || ef.kind === "wave" || ef.kind === "healwave") {
         var prog = 1 - ef.life / ef.maxLife;
         var radius = ef.r + (ef.maxR - ef.r) * prog;
@@ -1826,15 +2091,16 @@
           ctx.stroke();
         }
       } else if (ef.kind === "bolt") {
+        var bolt = this.resolveBeamEndpoints(ef);
         ctx.strokeStyle = ef.color;
         ctx.lineWidth = ef.lineWidth || 5;
         ctx.shadowColor = ef.color;
         ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.moveTo(ef.tx, ef.y);
-        ctx.lineTo(ef.tx + 14, ef.y + (ef.ty - ef.y) * 0.35);
-        ctx.lineTo(ef.tx - 10, ef.y + (ef.ty - ef.y) * 0.65);
-        ctx.lineTo(ef.tx, ef.ty);
+        ctx.moveTo(bolt.x1, bolt.y1);
+        ctx.lineTo(bolt.x1 + (bolt.x2 - bolt.x1) * 0.35 + 14, bolt.y1 + (bolt.y2 - bolt.y1) * 0.35 - 10);
+        ctx.lineTo(bolt.x1 + (bolt.x2 - bolt.x1) * 0.65 - 10, bolt.y1 + (bolt.y2 - bolt.y1) * 0.65 + 8);
+        ctx.lineTo(bolt.x2, bolt.y2);
         ctx.stroke();
         ctx.shadowBlur = 0;
       } else if (ef.kind === "hit" || ef.kind === "heal") {
@@ -1945,6 +2211,14 @@
         }
       }
       ctx.globalAlpha = 1;
+    }
+
+    for (var lk = 0; lk < this.effects.length; lk++) {
+      var lef = this.effects[lk];
+      if (lef.kind !== "link" && lef.kind !== "beam") continue;
+      var lalpha = Math.max(0, lef.life / (lef.maxLife || 1));
+      if (lef.kind === "link") this.drawActionLink(ctx, lef, lalpha);
+      else this.drawBeam(ctx, lef, lalpha);
     }
 
     for (var l = 0; l < this.labels.length; l++) {
