@@ -52,6 +52,12 @@ body {
 .refresh {
   background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
 }
+.viewmode {
+  background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5h18v2H3V5zm0 6h12v2H3v-2zm0 6h18v2H3v-2z'/%3E%3C/svg%3E");
+}
+.viewmode.arena-active {
+  background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='7' cy='8' r='3'/%3E%3Ccircle cx='17' cy='16' r='3'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cpath d='M3 20 L10 10 L14 14 L21 4' stroke='white' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+}
 .add {
   left: 1px;
   top: 1px;
@@ -84,7 +90,7 @@ iframe {
 }
 #endFrame {
   box-shadow: 0px 0px 5px 0px rgba(50, 50, 50, 0.75);
-  width: 320px;
+  width: 360px;
 }
 .panels {
   position: absolute;
@@ -95,8 +101,8 @@ iframe {
 }
 .panel {
   position: absolute;
-  width: 320px;
-  min-height: 320px;
+  width: 360px;
+  min-height: 360px;
   max-height: 480px;
   margin: auto;
   left:0;
@@ -161,16 +167,16 @@ iframe {
 }
 #textdiv {
   width:100%;
-  height:320px;
-  -webkit-flex: 1 1 320px ;
-  flex: 1 1 320px;
+  height:360px;
+  -webkit-flex: 1 1 360px ;
+  flex: 1 1 360px;
 }
 textarea {
   position: absolute;
   top:0;
   bottom:0;
   height: 100%;
-  width: 304px;
+  width: 344px;
   resize: none;
   box-sizing: border-box;
   box-shadow: inset 0px 0px 3px 0px rgba(50, 50, 50, 0.5);
@@ -433,6 +439,16 @@ div.menuopen {
 .body_h {
   right:300px;
 }
+body.parent-arena-mode .ad_v,
+body.parent-arena-mode .ad_h {
+  display: none !important;
+}
+body.parent-arena-mode .body.body_h {
+  right: 0;
+}
+body.parent-arena-mode .body.body_v {
+  bottom: 0;
+}
 .controlbar{
   right: 0;
   top: 0;
@@ -503,6 +519,43 @@ div.menuopen {
   }
 }
 
+#fileProtocolHint {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #f5f7fa;
+  color: #333;
+  text-align: center;
+}
+#fileProtocolHint h2 {
+  margin: 0 0 12px;
+}
+#fileProtocolHint p {
+  margin: 8px 0;
+  max-width: 560px;
+  line-height: 1.6;
+}
+#fileProtocolHint pre {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #222;
+  color: #fff;
+  border-radius: 6px;
+}
+#fileProtocolHint button {
+  margin-top: 12px;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
     </style>
     <style id="pstyle">
     </style>
@@ -521,21 +574,131 @@ div.menuopen {
     if (customlanpos > 0) {
       lanfile = decodeURIComponent(window.location.search.substring(customlanpos+2));
     }
-    req0 = new XMLHttpRequest();
-    req0.open("GET", lanfile);
-    req0.send();
-    req1 = new XMLHttpRequest();
-    req1.open("GET", "md5.js");
-    req1.send();
 
-    req2 = new XMLHttpRequest();
-    req2.open("GET", "md5.css");
-    req2.send();
+    var arenaViewJs = null;
+    var arenaViewCss = null;
+    var VIEW_MODE_KEY = "namerenaViewMode";
 
-    req3 = new XMLHttpRequest();
-    req3.open("GET", "md5.html");
-    req3.send();
+    function getViewMode() {
+      return localStorage.getItem(VIEW_MODE_KEY) || "log";
+    }
 
+    function setViewMode(mode) {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+      updateViewModeBtn();
+      updateParentArenaLayout();
+    }
+
+    function updateParentArenaLayout() {
+      document.body.classList.toggle("parent-arena-mode", getViewMode() === "arena");
+    }
+
+    function updateViewModeBtn() {
+      var mode = getViewMode();
+      var title = mode === "arena" ? "切换到文字模式" : "切换到赛场模式";
+      document.querySelectorAll(".viewModeToggle").forEach(function (btn) {
+        var icon = btn.querySelector(".svgicon.viewmode");
+        if (icon) icon.classList.toggle("arena-active", mode === "arena");
+        btn.title = title;
+      });
+    }
+
+    function injectArenaView(win) {
+      if (!win || !win.document || getViewMode() !== "arena") return false;
+      if (!arenaViewJs || !arenaViewCss) return false;
+      var doc = win.document;
+      if (!doc.getElementById("md5")) return false;
+      if (doc.getElementById("arenaViewRoot")) return true;
+
+      var style = doc.createElement("style");
+      style.id = "arenaViewCss";
+      style.textContent = arenaViewCss;
+      doc.head.appendChild(style);
+
+      var root = doc.createElement("div");
+      root.id = "arenaViewRoot";
+      root.className = "arena-view-root";
+      var canvas = doc.createElement("canvas");
+      canvas.id = "arenaCanvas";
+      root.appendChild(canvas);
+      doc.body.appendChild(root);
+
+      var script = doc.createElement("script");
+      script.textContent = arenaViewJs;
+      doc.body.appendChild(script);
+      return true;
+    }
+
+    function injectArenaViewWithRetry(win, tries) {
+      if (injectArenaView(win)) return;
+      if ((tries || 0) < 30 && getViewMode() === "arena") {
+        setTimeout(function () { injectArenaViewWithRetry(win, (tries || 0) + 1); }, 50);
+      }
+    }
+
+    function loadArenaAssets() {
+      var req4 = new XMLHttpRequest();
+      req4.open("GET", "arena-view.js");
+      req4.onload = function () { arenaViewJs = req4.responseText; };
+      req4.send();
+      var req5 = new XMLHttpRequest();
+      req5.open("GET", "arena-view.css");
+      req5.onload = function () { arenaViewCss = req5.responseText; };
+      req5.send();
+    }
+
+    function loadResourcesViaXHR() {
+      req0 = new XMLHttpRequest();
+      req0.open("GET", lanfile);
+      req0.send();
+      req1 = new XMLHttpRequest();
+      req1.open("GET", "md5.js");
+      req1.send();
+      req2 = new XMLHttpRequest();
+      req2.open("GET", "md5.css");
+      req2.send();
+      req3 = new XMLHttpRequest();
+      req3.open("GET", "md5.html");
+      req3.send();
+      loadArenaAssets();
+    }
+
+    function showLocalServerHint() {
+      window.__blockApp = true;
+      document.addEventListener("DOMContentLoaded", function () {
+        var hint = document.createElement("div");
+        hint.id = "fileProtocolHint";
+        hint.innerHTML =
+          "<h2>无法直接打开本地 HTML 文件</h2>" +
+          "<p>浏览器安全策略禁止在 <code>file://</code> 协议下加载游戏资源。</p>" +
+          "<p>请先在项目目录运行：</p>" +
+          "<pre>.\\serve.ps1</pre>" +
+          "<p>然后在浏览器访问：</p>" +
+          "<p><a href=\"http://127.0.0.1:8080/index.html\">http://127.0.0.1:8080/index.html</a></p>" +
+          "<p><button type=\"button\" id=\"retryLocalServer\">我已启动服务器，重试</button></p>";
+        document.body.appendChild(hint);
+        document.getElementById("retryLocalServer").onclick = function () {
+          location.replace("http://127.0.0.1:8080/index.html" + location.search + location.hash);
+        };
+      });
+    }
+
+    if (location.protocol === "file:") {
+      window.__blockApp = true;
+      var probe = new XMLHttpRequest();
+      probe.open("GET", "http://127.0.0.1:8080/favicon.ico?" + Date.now());
+      probe.onload = function () {
+        if (probe.status >= 200 && probe.status < 400) {
+          location.replace("http://127.0.0.1:8080/index.html" + location.search + location.hash);
+        } else {
+          showLocalServerHint();
+        }
+      };
+      probe.onerror = showLocalServerHint;
+      probe.send();
+    } else {
+      loadResourcesViaXHR();
+    }
 
       function cw(){
         return document.querySelector('.mdframe').contentWindow;
@@ -543,6 +706,26 @@ div.menuopen {
       function rld(a){
         a.reload(false);
       }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      updateViewModeBtn();
+      updateParentArenaLayout();
+      var frame = document.querySelector(".mdframe");
+      if (frame) {
+        frame.addEventListener("load", function () {
+          try { injectArenaViewWithRetry(frame.contentWindow, 0); } catch (e) {}
+        }, true);
+      }
+      document.querySelectorAll(".viewModeToggle").forEach(function (btn) {
+        btn.onclick = function () {
+          setViewMode(getViewMode() === "arena" ? "log" : "arena");
+          var f = document.querySelector(".mdframe");
+          if (f && f.contentWindow) {
+            try { rld(f.contentWindow); } catch (e) {}
+          }
+        };
+      });
+    });
     </script>
   </head>
 
@@ -551,7 +734,7 @@ div.menuopen {
     <div class='ad_h'></div>
     <div class='ad_v'></div>
     <div class='body'>
-    <iframe src='md5.html' class='mdframe'></iframe>
+    <iframe src='about:blank' class='mdframe'></iframe>
       <div class="panels">
         <div id="inputPanel" class="panel vertical">
           <div id='inputtitle' class='paneltitle'></div>
@@ -578,6 +761,7 @@ div.menuopen {
           </div>
           <div class='goBar'>
             <div class="svgicon checkBoss"></div>
+            <button type="button" class='picon viewModeToggle' title='切换呈现方式'><div class="svgicon viewmode"></div></button>
             <button class='goBtn'></button>
             <button class='picon addPlayer'><div class="svgicon add"></div></button>
           </div>
@@ -602,6 +786,7 @@ div.menuopen {
         </div>
       </div>
       <div class='controlbar'>
+        <button id='viewModeBtn' class='micon viewModeToggle' title='切换呈现方式'><div class="svgicon viewmode"></div></button>
         <button id='shareBtn' class='micon'><div class="svgicon share"></div></button>
         <button id='fastBtn' class='micon'><div class="svgicon fastforward"></div></button>
         <button id='refreshBtn' class='micon'><div class="svgicon refresh"></div></button>
@@ -613,7 +798,11 @@ div.menuopen {
       </div>
     </div>
 
-    <script src="index.dart.js"></script>
-    <script src="lzma_worker-min.js"></script>
+    <script>
+    if (!window.__blockApp) {
+      document.write('<script src="index.dart.js"><\/script>');
+      document.write('<script src="lzma_worker-min.js"><\/script>');
+    }
+    </script>
   </body>
 </html>

@@ -1,0 +1,811 @@
+/* === base layout (canvas fullscreen, panels float) === */
+body.arena-mode {
+  display: block;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  background: var(--arena-page-bg);
+  color: var(--arena-text);
+}
+
+body.arena-mode #arenaViewRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+body.arena-mode #md5.main,
+body.arena-mode #md5.main.hlist,
+body.arena-mode #md5.main.vlist {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  background: transparent !important;
+  border: none !important;
+  border-image: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  display: block !important;
+  z-index: 2;
+}
+
+.arena-view-root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, var(--arena-canvas-1) 0%, var(--arena-canvas-2) 70%);
+}
+
+#arenaCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* === draggable widgets === */
+.arena-draggable {
+  position: fixed;
+  z-index: 6;
+  touch-action: none;
+}
+
+.arena-draggable.arena-dragging {
+  cursor: grabbing;
+  z-index: 20;
+}
+
+.arena-widget-drag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border-radius: 4px;
+  color: var(--arena-text-hint);
+  font-size: 12px;
+  line-height: 1;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.arena-widget-drag:active {
+  cursor: grabbing;
+}
+
+.arena-panel-toggle {
+  position: fixed;
+  z-index: 7;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--arena-controls-bg);
+  border: 1px solid var(--arena-controls-border);
+  color: var(--arena-accent);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  touch-action: none;
+}
+
+.arena-panel-toggle.active {
+  background: var(--arena-btn-active-bg);
+  color: var(--arena-btn-active-text);
+  border-color: var(--arena-accent);
+}
+
+.arena-panel-toggle.arena-dragging {
+  cursor: grabbing;
+}
+
+.arena-float-panel {
+  position: fixed;
+  pointer-events: auto;
+  width: clamp(200px, 32vw, 300px);
+  min-height: 120px;
+  max-height: min(52vh, 420px);
+  display: flex;
+  flex-direction: column;
+  background: var(--arena-sidebar-bg);
+  border: 1px solid var(--arena-sidebar-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.38);
+  z-index: 8;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.arena-float-panel.collapsed {
+  display: none !important;
+}
+
+.arena-float-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: var(--arena-header-bg);
+  border-bottom: 1px solid var(--arena-header-border);
+  cursor: grab;
+  user-select: none;
+}
+
+.arena-float-head:active,
+.arena-float-panel.arena-dragging .arena-float-head {
+  cursor: grabbing;
+}
+
+.arena-float-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--arena-accent);
+}
+
+.arena-float-close {
+  border: none;
+  background: transparent;
+  color: var(--arena-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.arena-float-close:hover {
+  color: var(--arena-text);
+  background: var(--arena-panel);
+}
+
+/* === controls === */
+.arena-controls {
+  left: 8px;
+  bottom: 8px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 14px;
+  background: var(--arena-controls-bg);
+  border: 1px solid var(--arena-controls-border);
+  font-size: 11px;
+  color: var(--arena-text-muted);
+  user-select: none;
+  display: flex;
+  align-items: center;
+}
+
+.arena-ctrl-random {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.arena-ctrl-random input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--arena-accent);
+}
+
+.arena-theme-panel {
+  right: 8px;
+  top: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--arena-controls-bg);
+  border: 1px solid var(--arena-controls-border);
+  font-size: 11px;
+  color: var(--arena-text-muted);
+  user-select: none;
+  max-width: calc(100vw - 16px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.arena-theme-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.arena-theme-tones {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 5px;
+}
+
+.arena-theme-tones button,
+.arena-theme-palettes button {
+  border: 1px solid var(--arena-btn-border);
+  background: var(--arena-btn-bg);
+  color: var(--arena-text-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.arena-theme-tones button.active,
+.arena-theme-palettes button.active {
+  background: var(--arena-btn-active-bg);
+  color: var(--arena-btn-active-text);
+  border-color: var(--arena-accent);
+  font-weight: bold;
+}
+
+.arena-theme-palettes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.arena-theme-palettes button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+
+.arena-theme-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  flex-shrink: 0;
+}
+
+/* === floating sidebar panels === */
+body.arena-mode #md5 .plist,
+body.arena-mode #md5 .pbody,
+body.arena-mode #md5 .pbody.hbody,
+body.arena-mode #md5 .pbody.vbody {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  left: auto !important;
+  top: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  border: none !important;
+  border-image: none !important;
+  background: transparent !important;
+  padding: 0 4px 6px !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+body.arena-mode #md5 .plist::before,
+body.arena-mode #md5 .pbody::before {
+  display: none;
+}
+
+.arena-plist-header,
+.arena-log-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--arena-header-bg);
+  border-bottom: 1px solid var(--arena-header-border);
+}
+
+.arena-plist-title,
+.arena-log-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--arena-accent);
+  white-space: nowrap;
+}
+
+.arena-log-hint {
+  font-size: 10px;
+  color: var(--arena-text-hint);
+  white-space: nowrap;
+}
+
+.arena-stats-toggle {
+  display: flex;
+  gap: 2px;
+}
+
+.arena-stats-toggle button {
+  border: 1px solid var(--arena-btn-border);
+  background: var(--arena-btn-bg);
+  color: var(--arena-text-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.arena-stats-toggle button.active {
+  background: var(--arena-btn-active-bg);
+  color: var(--arena-btn-active-text);
+  border-color: var(--arena-accent);
+}
+
+body.arena-mode #md5 .pbody .row,
+body.arena-mode #md5 .pbody p.row {
+  display: block;
+  margin: 2px 0;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+body.arena-mode #md5 .hlist,
+body.arena-mode #md5 .vlist {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  border: none !important;
+  border-image: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+body.arena-mode #md5 .hbody,
+body.arena-mode #md5 .vbody {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none;
+  left: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body.arena-mode #md5 .plr_list {
+  white-space: normal;
+  margin: 4px 0;
+  padding: 4px;
+  border-radius: 4px;
+  background: var(--arena-panel);
+}
+
+body.arena-mode #md5 .name {
+  background: var(--arena-name-bg);
+  color: var(--arena-name-text);
+  text-shadow: none;
+}
+
+body.arena-mode #md5 .namedie {
+  background: var(--arena-die-bg);
+  color: var(--arena-die-text);
+  text-decoration: line-through;
+}
+
+body.arena-mode #md5 .detail {
+  display: block;
+  margin: 2px 0 0 20px;
+  font-size: 11px;
+  color: var(--arena-text-muted);
+  white-space: normal;
+}
+
+body.arena-mode #md5 .plist.arena-stats-init .plr_list .maxhp,
+body.arena-mode #md5 .plist.arena-stats-init .plr_list .hp,
+body.arena-mode #md5 .plist.arena-stats-init .plr_list .oldhp,
+body.arena-mode #md5 .plist.arena-stats-init .plr_list .healhp,
+body.arena-mode #md5 .plist.arena-stats-init .plr_list .detail,
+body.arena-mode #md5 .plist.arena-stats-init .plr_list .hptxt {
+  display: none !important;
+}
+
+body.arena-mode #md5 .plist.arena-stats-init .arena-snapshot {
+  display: block;
+}
+
+body.arena-mode #md5 .plist.arena-stats-live .arena-snapshot {
+  display: none !important;
+}
+
+.arena-snapshot {
+  margin: 4px 0 2px 18px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--arena-snap-bg);
+  border: 1px solid var(--arena-snap-border);
+}
+
+.arena-snap-hpbar {
+  height: 5px;
+  background: var(--arena-snap-hpbar);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.arena-snap-hpfill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--arena-hp-1), var(--arena-hp-2));
+  border-radius: 3px;
+}
+
+.arena-snap-hptext {
+  font-size: 10px;
+  color: var(--arena-text-muted);
+  margin-bottom: 2px;
+}
+
+.arena-snap-detail {
+  font-size: 10px;
+  color: var(--arena-text);
+  line-height: 1.35;
+  white-space: normal;
+}
+
+body.arena-mode #md5 .damage {
+  color: var(--arena-damage);
+  font-weight: 600;
+}
+
+body.arena-mode #md5 .recover {
+  color: var(--arena-recover);
+  font-weight: 600;
+}
+
+body.arena-mode #md5 .stext {
+  color: var(--arena-stext);
+  font-weight: 600;
+}
+
+body.arena-mode #md5 .sctext {
+  color: var(--arena-sctext);
+  font-weight: 700;
+}
+
+body.arena-mode #md5 .welcome,
+body.arena-mode #md5 .welcome2 {
+  color: var(--arena-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 4px 6px;
+}
+
+body.arena-mode #md5 hr {
+  margin: 6px 0;
+  background: var(--arena-accent);
+  opacity: 0.35;
+}
+
+/* === dark palettes === */
+body.arena-mode.arena-tone-dark.arena-palette-ocean {
+  --arena-page-bg: #081420;
+  --arena-canvas-1: #122238;
+  --arena-canvas-2: #081420;
+  --arena-sidebar-bg: linear-gradient(180deg, #0e1c30 0%, #0a1524 100%);
+  --arena-sidebar-border: rgba(66, 168, 215, 0.55);
+  --arena-accent: #5ec8f0;
+  --arena-text: #f0f6fc;
+  --arena-text-muted: #a8c4dc;
+  --arena-text-hint: #7a9bb8;
+  --arena-header-bg: rgba(8, 18, 32, 0.97);
+  --arena-header-border: rgba(66, 168, 215, 0.4);
+  --arena-panel: rgba(255, 255, 255, 0.07);
+  --arena-name-bg: rgba(255, 255, 255, 0.14);
+  --arena-name-text: #ffffff;
+  --arena-die-bg: rgba(180, 50, 60, 0.65);
+  --arena-die-text: #ffd0d0;
+  --arena-grid: rgba(94, 200, 240, 0.18);
+  --arena-frame: rgba(94, 200, 240, 0.55);
+  --arena-damage: #ff7070;
+  --arena-recover: #5dffa0;
+  --arena-stext: #7ec8ef;
+  --arena-sctext: #ffc857;
+  --arena-controls-bg: rgba(6, 14, 26, 0.9);
+  --arena-controls-border: rgba(94, 200, 240, 0.45);
+  --arena-btn-bg: rgba(255, 255, 255, 0.07);
+  --arena-btn-border: rgba(94, 200, 240, 0.4);
+  --arena-btn-active-bg: rgba(66, 168, 215, 0.45);
+  --arena-btn-active-text: #ffffff;
+  --arena-snap-bg: rgba(0, 0, 0, 0.28);
+  --arena-snap-border: rgba(94, 200, 240, 0.25);
+  --arena-snap-hpbar: rgba(0, 0, 0, 0.45);
+  --arena-hp-1: #3dcc66;
+  --arena-hp-2: #7bc96f;
+  --arena-label-bg: rgba(6, 14, 26, 0.88);
+  --arena-label-text: #f0f6ff;
+  --arena-label-boss: #ffe566;
+}
+
+body.arena-mode.arena-tone-dark.arena-palette-blaze {
+  --arena-page-bg: #140808;
+  --arena-canvas-1: #2a1010;
+  --arena-canvas-2: #140808;
+  --arena-sidebar-bg: linear-gradient(180deg, #221010 0%, #160808 100%);
+  --arena-sidebar-border: rgba(255, 90, 50, 0.55);
+  --arena-accent: #ff6b35;
+  --arena-text: #fff0ea;
+  --arena-text-muted: #d4a89a;
+  --arena-text-hint: #b08070;
+  --arena-header-bg: rgba(28, 8, 8, 0.97);
+  --arena-header-border: rgba(255, 90, 50, 0.4);
+  --arena-panel: rgba(255, 120, 80, 0.08);
+  --arena-name-bg: rgba(255, 100, 60, 0.2);
+  --arena-name-text: #fff8f4;
+  --arena-die-bg: rgba(120, 20, 20, 0.7);
+  --arena-die-text: #ffcccc;
+  --arena-grid: rgba(255, 107, 53, 0.16);
+  --arena-frame: rgba(255, 107, 53, 0.55);
+  --arena-damage: #ff5555;
+  --arena-recover: #66ff99;
+  --arena-stext: #ffaa77;
+  --arena-sctext: #ffcc44;
+  --arena-controls-bg: rgba(20, 6, 6, 0.92);
+  --arena-controls-border: rgba(255, 107, 53, 0.45);
+  --arena-btn-bg: rgba(255, 100, 60, 0.1);
+  --arena-btn-border: rgba(255, 107, 53, 0.4);
+  --arena-btn-active-bg: rgba(255, 80, 40, 0.45);
+  --arena-btn-active-text: #ffffff;
+  --arena-snap-bg: rgba(40, 10, 10, 0.5);
+  --arena-snap-border: rgba(255, 107, 53, 0.3);
+  --arena-snap-hpbar: rgba(0, 0, 0, 0.5);
+  --arena-hp-1: #44cc55;
+  --arena-hp-2: #88dd66;
+  --arena-label-bg: rgba(30, 8, 8, 0.9);
+  --arena-label-text: #fff0ea;
+  --arena-label-boss: #ffcc66;
+}
+
+body.arena-mode.arena-tone-dark.arena-palette-volt {
+  --arena-page-bg: #060608;
+  --arena-canvas-1: #12121a;
+  --arena-canvas-2: #060608;
+  --arena-sidebar-bg: linear-gradient(180deg, #101018 0%, #08080e 100%);
+  --arena-sidebar-border: rgba(220, 255, 60, 0.5);
+  --arena-accent: #d4ff44;
+  --arena-text: #f4ffe8;
+  --arena-text-muted: #b8c8a0;
+  --arena-text-hint: #90a878;
+  --arena-header-bg: rgba(10, 10, 14, 0.97);
+  --arena-header-border: rgba(220, 255, 60, 0.35);
+  --arena-panel: rgba(220, 255, 60, 0.06);
+  --arena-name-bg: rgba(220, 255, 60, 0.12);
+  --arena-name-text: #f8fff0;
+  --arena-die-bg: rgba(100, 40, 100, 0.6);
+  --arena-die-text: #ffccff;
+  --arena-grid: rgba(220, 255, 60, 0.14);
+  --arena-frame: rgba(220, 255, 60, 0.5);
+  --arena-damage: #ff66aa;
+  --arena-recover: #88ff44;
+  --arena-stext: #ccff66;
+  --arena-sctext: #ffff55;
+  --arena-controls-bg: rgba(8, 8, 12, 0.92);
+  --arena-controls-border: rgba(220, 255, 60, 0.4);
+  --arena-btn-bg: rgba(220, 255, 60, 0.08);
+  --arena-btn-border: rgba(220, 255, 60, 0.35);
+  --arena-btn-active-bg: rgba(180, 220, 40, 0.45);
+  --arena-btn-active-text: #0a0a0e;
+  --arena-snap-bg: rgba(20, 20, 10, 0.55);
+  --arena-snap-border: rgba(220, 255, 60, 0.25);
+  --arena-snap-hpbar: rgba(0, 0, 0, 0.5);
+  --arena-hp-1: #aaff33;
+  --arena-hp-2: #66dd22;
+  --arena-label-bg: rgba(10, 10, 14, 0.9);
+  --arena-label-text: #f4ffe8;
+  --arena-label-boss: #ffff66;
+}
+
+body.arena-mode.arena-tone-dark.arena-palette-jade {
+  --arena-page-bg: #061210;
+  --arena-canvas-1: #0e201c;
+  --arena-canvas-2: #061210;
+  --arena-sidebar-bg: linear-gradient(180deg, #0c1e1a 0%, #081612 100%);
+  --arena-sidebar-border: rgba(50, 220, 160, 0.5);
+  --arena-accent: #3de8a8;
+  --arena-text: #e8fff4;
+  --arena-text-muted: #98c8b0;
+  --arena-text-hint: #70a890;
+  --arena-header-bg: rgba(6, 20, 16, 0.97);
+  --arena-header-border: rgba(50, 220, 160, 0.35);
+  --arena-panel: rgba(50, 220, 160, 0.07);
+  --arena-name-bg: rgba(50, 220, 160, 0.14);
+  --arena-name-text: #f0fff8;
+  --arena-die-bg: rgba(40, 80, 70, 0.65);
+  --arena-die-text: #c0e8d8;
+  --arena-grid: rgba(50, 220, 160, 0.15);
+  --arena-frame: rgba(50, 220, 160, 0.5);
+  --arena-damage: #ff6666;
+  --arena-recover: #44ffaa;
+  --arena-stext: #66ddbb;
+  --arena-sctext: #aaffcc;
+  --arena-controls-bg: rgba(4, 16, 12, 0.92);
+  --arena-controls-border: rgba(50, 220, 160, 0.4);
+  --arena-btn-bg: rgba(50, 220, 160, 0.08);
+  --arena-btn-border: rgba(50, 220, 160, 0.35);
+  --arena-btn-active-bg: rgba(40, 180, 130, 0.45);
+  --arena-btn-active-text: #ffffff;
+  --arena-snap-bg: rgba(4, 20, 14, 0.55);
+  --arena-snap-border: rgba(50, 220, 160, 0.25);
+  --arena-snap-hpbar: rgba(0, 0, 0, 0.45);
+  --arena-hp-1: #33dd88;
+  --arena-hp-2: #66eeaa;
+  --arena-label-bg: rgba(6, 20, 16, 0.9);
+  --arena-label-text: #e8fff4;
+  --arena-label-boss: #aaffcc;
+}
+
+/* === light palettes === */
+body.arena-mode.arena-tone-light.arena-palette-snow {
+  --arena-page-bg: #e8eef4;
+  --arena-canvas-1: #f4f8fc;
+  --arena-canvas-2: #dce6f0;
+  --arena-sidebar-bg: linear-gradient(180deg, #f8fbff 0%, #eef4fa 100%);
+  --arena-sidebar-border: rgba(20, 80, 160, 0.35);
+  --arena-accent: #1565b8;
+  --arena-text: #0a1828;
+  --arena-text-muted: #2a4868;
+  --arena-text-hint: #4a6888;
+  --arena-header-bg: rgba(240, 246, 252, 0.97);
+  --arena-header-border: rgba(20, 80, 160, 0.25);
+  --arena-panel: rgba(20, 80, 160, 0.06);
+  --arena-name-bg: rgba(20, 80, 160, 0.12);
+  --arena-name-text: #0a1828;
+  --arena-die-bg: rgba(180, 60, 60, 0.2);
+  --arena-die-text: #881818;
+  --arena-grid: rgba(20, 80, 160, 0.14);
+  --arena-frame: rgba(20, 80, 160, 0.45);
+  --arena-damage: #cc2222;
+  --arena-recover: #118844;
+  --arena-stext: #0a5a9a;
+  --arena-sctext: #9a5a00;
+  --arena-controls-bg: rgba(248, 252, 255, 0.94);
+  --arena-controls-border: rgba(20, 80, 160, 0.3);
+  --arena-btn-bg: rgba(20, 80, 160, 0.08);
+  --arena-btn-border: rgba(20, 80, 160, 0.28);
+  --arena-btn-active-bg: rgba(20, 100, 184, 0.22);
+  --arena-btn-active-text: #0a1828;
+  --arena-snap-bg: rgba(20, 80, 160, 0.06);
+  --arena-snap-border: rgba(20, 80, 160, 0.2);
+  --arena-snap-hpbar: rgba(10, 30, 60, 0.12);
+  --arena-hp-1: #22aa55;
+  --arena-hp-2: #44cc77;
+  --arena-label-bg: rgba(248, 252, 255, 0.92);
+  --arena-label-text: #0a1828;
+  --arena-label-boss: #9a5a00;
+}
+
+body.arena-mode.arena-tone-light.arena-palette-coral {
+  --arena-page-bg: #faf0ea;
+  --arena-canvas-1: #fff8f4;
+  --arena-canvas-2: #f0e4dc;
+  --arena-sidebar-bg: linear-gradient(180deg, #fffaf6 0%, #f8ece4 100%);
+  --arena-sidebar-border: rgba(180, 60, 40, 0.35);
+  --arena-accent: #c43a20;
+  --arena-text: #2a1008;
+  --arena-text-muted: #6a3828;
+  --arena-text-hint: #8a5848;
+  --arena-header-bg: rgba(255, 248, 244, 0.97);
+  --arena-header-border: rgba(180, 60, 40, 0.25);
+  --arena-panel: rgba(180, 60, 40, 0.07);
+  --arena-name-bg: rgba(180, 60, 40, 0.12);
+  --arena-name-text: #2a1008;
+  --arena-die-bg: rgba(160, 40, 40, 0.18);
+  --arena-die-text: #881010;
+  --arena-grid: rgba(180, 60, 40, 0.12);
+  --arena-frame: rgba(180, 60, 40, 0.42);
+  --arena-damage: #bb1111;
+  --arena-recover: #117744;
+  --arena-stext: #aa3311;
+  --arena-sctext: #884400;
+  --arena-controls-bg: rgba(255, 250, 246, 0.94);
+  --arena-controls-border: rgba(180, 60, 40, 0.3);
+  --arena-btn-bg: rgba(180, 60, 40, 0.08);
+  --arena-btn-border: rgba(180, 60, 40, 0.28);
+  --arena-btn-active-bg: rgba(196, 58, 32, 0.2);
+  --arena-btn-active-text: #2a1008;
+  --arena-snap-bg: rgba(180, 60, 40, 0.06);
+  --arena-snap-border: rgba(180, 60, 40, 0.2);
+  --arena-snap-hpbar: rgba(60, 20, 10, 0.1);
+  --arena-hp-1: #228844;
+  --arena-hp-2: #44aa66;
+  --arena-label-bg: rgba(255, 248, 244, 0.92);
+  --arena-label-text: #2a1008;
+  --arena-label-boss: #884400;
+}
+
+body.arena-mode.arena-tone-light.arena-palette-ink {
+  --arena-page-bg: #f0f0f0;
+  --arena-canvas-1: #fafafa;
+  --arena-canvas-2: #e4e4e4;
+  --arena-sidebar-bg: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+  --arena-sidebar-border: rgba(0, 0, 0, 0.22);
+  --arena-accent: #000000;
+  --arena-text: #000000;
+  --arena-text-muted: #333333;
+  --arena-text-hint: #555555;
+  --arena-header-bg: rgba(255, 255, 255, 0.98);
+  --arena-header-border: rgba(0, 0, 0, 0.15);
+  --arena-panel: rgba(0, 0, 0, 0.05);
+  --arena-name-bg: rgba(0, 0, 0, 0.1);
+  --arena-name-text: #000000;
+  --arena-die-bg: rgba(0, 0, 0, 0.12);
+  --arena-die-text: #660000;
+  --arena-grid: rgba(0, 0, 0, 0.1);
+  --arena-frame: rgba(0, 0, 0, 0.35);
+  --arena-damage: #aa0000;
+  --arena-recover: #006622;
+  --arena-stext: #003366;
+  --arena-sctext: #664400;
+  --arena-controls-bg: rgba(255, 255, 255, 0.96);
+  --arena-controls-border: rgba(0, 0, 0, 0.2);
+  --arena-btn-bg: rgba(0, 0, 0, 0.05);
+  --arena-btn-border: rgba(0, 0, 0, 0.2);
+  --arena-btn-active-bg: rgba(0, 0, 0, 0.15);
+  --arena-btn-active-text: #000000;
+  --arena-snap-bg: rgba(0, 0, 0, 0.04);
+  --arena-snap-border: rgba(0, 0, 0, 0.15);
+  --arena-snap-hpbar: rgba(0, 0, 0, 0.1);
+  --arena-hp-1: #006622;
+  --arena-hp-2: #228844;
+  --arena-label-bg: rgba(255, 255, 255, 0.94);
+  --arena-label-text: #000000;
+  --arena-label-boss: #664400;
+}
+
+body.arena-mode.arena-tone-light.arena-palette-mint {
+  --arena-page-bg: #e8f8f0;
+  --arena-canvas-1: #f4fff8;
+  --arena-canvas-2: #d8f0e4;
+  --arena-sidebar-bg: linear-gradient(180deg, #f8fff8 0%, #e8f4ec 100%);
+  --arena-sidebar-border: rgba(20, 120, 80, 0.35);
+  --arena-accent: #0a7a50;
+  --arena-text: #082818;
+  --arena-text-muted: #1a5840;
+  --arena-text-hint: #3a7860;
+  --arena-header-bg: rgba(244, 255, 248, 0.97);
+  --arena-header-border: rgba(20, 120, 80, 0.25);
+  --arena-panel: rgba(20, 120, 80, 0.07);
+  --arena-name-bg: rgba(20, 120, 80, 0.12);
+  --arena-name-text: #082818;
+  --arena-die-bg: rgba(120, 40, 60, 0.15);
+  --arena-die-text: #881828;
+  --arena-grid: rgba(20, 120, 80, 0.13);
+  --arena-frame: rgba(20, 120, 80, 0.42);
+  --arena-damage: #bb2222;
+  --arena-recover: #0a8844;
+  --arena-stext: #0a6655;
+  --arena-sctext: #886600;
+  --arena-controls-bg: rgba(244, 255, 248, 0.94);
+  --arena-controls-border: rgba(20, 120, 80, 0.3);
+  --arena-btn-bg: rgba(20, 120, 80, 0.08);
+  --arena-btn-border: rgba(20, 120, 80, 0.28);
+  --arena-btn-active-bg: rgba(10, 122, 80, 0.2);
+  --arena-btn-active-text: #082818;
+  --arena-snap-bg: rgba(20, 120, 80, 0.06);
+  --arena-snap-border: rgba(20, 120, 80, 0.2);
+  --arena-snap-hpbar: rgba(8, 40, 24, 0.1);
+  --arena-hp-1: #1a9955;
+  --arena-hp-2: #33bb77;
+  --arena-label-bg: rgba(244, 255, 248, 0.92);
+  --arena-label-text: #082818;
+  --arena-label-boss: #886600;
+}
+
+@media (max-width: 520px) {
+  .arena-float-panel {
+    width: min(92vw, 300px);
+    max-height: min(45vh, 360px);
+  }
+
+  .arena-theme-panel {
+    max-width: calc(100vw - 16px);
+  }
+}
