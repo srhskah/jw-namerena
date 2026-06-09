@@ -114,7 +114,7 @@ body.arena-mode #md5.main.vlist {
   border: 1px solid var(--arena-sidebar-border);
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.38);
-  z-index: 8;
+  z-index: 9;
   overflow: hidden;
   touch-action: none;
 }
@@ -193,8 +193,6 @@ body.arena-mode #md5.main.vlist {
 }
 
 .arena-theme-panel {
-  right: 8px;
-  top: 8px;
   padding: 6px 8px;
   border-radius: 12px;
   background: var(--arena-controls-bg);
@@ -207,6 +205,11 @@ body.arena-mode #md5.main.vlist {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 4px;
+  z-index: 8;
+}
+
+.arena-theme-panel.collapsed {
+  display: none !important;
 }
 
 .arena-theme-body {
@@ -261,10 +264,13 @@ body.arena-mode #md5.main.vlist {
 }
 
 /* === floating sidebar panels === */
-body.arena-mode #md5 .plist,
-body.arena-mode #md5 .pbody,
-body.arena-mode #md5 .pbody.hbody,
-body.arena-mode #md5 .pbody.vbody {
+body.arena-mode .plist,
+body.arena-mode .pbody,
+body.arena-mode .plist.hlist,
+body.arena-mode .plist.vlist,
+body.arena-mode .pbody.hbody,
+body.arena-mode .pbody.vbody {
+  display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -287,8 +293,8 @@ body.arena-mode #md5 .pbody.vbody {
   scrollbar-gutter: stable;
 }
 
-body.arena-mode #md5 .plist::before,
-body.arena-mode #md5 .pbody::before {
+body.arena-mode .plist::before,
+body.arena-mode .pbody::before {
   display: none;
 }
 
@@ -341,27 +347,35 @@ body.arena-mode #md5 .pbody::before {
   border-color: var(--arena-accent);
 }
 
-body.arena-mode #md5 .pbody .row,
-body.arena-mode #md5 .pbody p.row {
+body.arena-mode .pbody .row,
+body.arena-mode .pbody p.row {
   display: block;
   margin: 2px 0;
   line-height: 1.45;
   word-break: break-word;
 }
 
-body.arena-mode #md5 .hlist,
-body.arena-mode #md5 .vlist {
-  position: static !important;
+body.arena-mode #md5 .plist.hlist,
+body.arena-mode #md5 .plist.vlist,
+body.arena-mode .plist.hlist,
+body.arena-mode .plist.vlist {
+  display: block !important;
+  position: relative !important;
   width: 100% !important;
   height: auto !important;
+  max-height: none !important;
   border: none !important;
   border-image: none !important;
   background: transparent !important;
   padding: 0 !important;
+  overflow: visible !important;
 }
 
-body.arena-mode #md5 .hbody,
-body.arena-mode #md5 .vbody {
+body.arena-mode #md5 .pbody.hbody,
+body.arena-mode #md5 .pbody.vbody,
+body.arena-mode .pbody.hbody,
+body.arena-mode .pbody.vbody {
+  display: block !important;
   position: static !important;
   width: 100% !important;
   height: auto !important;
@@ -371,7 +385,7 @@ body.arena-mode #md5 .vbody {
   overflow-y: auto !important;
 }
 
-body.arena-mode #md5 .plr_list {
+body.arena-mode .plr_list {
   white-space: normal;
   margin: 4px 0;
   padding: 4px;
@@ -379,19 +393,19 @@ body.arena-mode #md5 .plr_list {
   background: var(--arena-panel);
 }
 
-body.arena-mode #md5 .name {
+body.arena-mode .name {
   background: var(--arena-name-bg);
   color: var(--arena-name-text);
   text-shadow: none;
 }
 
-body.arena-mode #md5 .namedie {
+body.arena-mode .namedie {
   background: var(--arena-die-bg);
   color: var(--arena-die-text);
   text-decoration: line-through;
 }
 
-body.arena-mode #md5 .detail {
+body.arena-mode .detail {
   display: block;
   margin: 2px 0 0 20px;
   font-size: 11px;
@@ -399,20 +413,20 @@ body.arena-mode #md5 .detail {
   white-space: normal;
 }
 
-body.arena-mode #md5 .plist.arena-stats-init .plr_list .maxhp,
-body.arena-mode #md5 .plist.arena-stats-init .plr_list .hp,
-body.arena-mode #md5 .plist.arena-stats-init .plr_list .oldhp,
-body.arena-mode #md5 .plist.arena-stats-init .plr_list .healhp,
-body.arena-mode #md5 .plist.arena-stats-init .plr_list .detail,
-body.arena-mode #md5 .plist.arena-stats-init .plr_list .hptxt {
+body.arena-mode .plist.arena-stats-init .plr_list .maxhp,
+body.arena-mode .plist.arena-stats-init .plr_list .hp,
+body.arena-mode .plist.arena-stats-init .plr_list .oldhp,
+body.arena-mode .plist.arena-stats-init .plr_list .healhp,
+body.arena-mode .plist.arena-stats-init .plr_list .detail,
+body.arena-mode .plist.arena-stats-init .plr_list .hptxt {
   display: none !important;
 }
 
-body.arena-mode #md5 .plist.arena-stats-init .arena-snapshot {
+body.arena-mode .plist.arena-stats-init .arena-snapshot {
   display: block;
 }
 
-body.arena-mode #md5 .plist.arena-stats-live .arena-snapshot {
+body.arena-mode .plist.arena-stats-live .arena-snapshot {
   display: none !important;
 }
 
@@ -451,35 +465,35 @@ body.arena-mode #md5 .plist.arena-stats-live .arena-snapshot {
   white-space: normal;
 }
 
-body.arena-mode #md5 .damage {
+body.arena-mode .damage {
   color: var(--arena-damage);
   font-weight: 600;
 }
 
-body.arena-mode #md5 .recover {
+body.arena-mode .recover {
   color: var(--arena-recover);
   font-weight: 600;
 }
 
-body.arena-mode #md5 .stext {
+body.arena-mode .stext {
   color: var(--arena-stext);
   font-weight: 600;
 }
 
-body.arena-mode #md5 .sctext {
+body.arena-mode .sctext {
   color: var(--arena-sctext);
   font-weight: 700;
 }
 
-body.arena-mode #md5 .welcome,
-body.arena-mode #md5 .welcome2 {
+body.arena-mode .welcome,
+body.arena-mode .welcome2 {
   color: var(--arena-text-muted);
   font-size: 13px;
   line-height: 1.5;
   margin: 4px 6px;
 }
 
-body.arena-mode #md5 hr {
+body.arena-mode .pbody hr {
   margin: 6px 0;
   background: var(--arena-accent);
   opacity: 0.35;

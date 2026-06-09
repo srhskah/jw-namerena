@@ -97,7 +97,12 @@
     generic:    { beam: true,  lineWidth: 3, dash: [6, 4],   speed: 7,  projR: 5,  shape: "circle",  trail: true }
   };
 
-  var TEAM_COLORS = ["#42a8d7", "#e85d5d", "#7bc96f", "#c9a0dc", "#f0ad4e", "#5bc0de"];
+  var TEAM_PALETTE = [
+    "#42a8d7", "#e85d5d", "#7bc96f", "#c9a0dc", "#f0ad4e", "#5bc0de",
+    "#ff6b9d", "#20c997", "#845ef7", "#fd7e14", "#15aabf", "#fab005",
+    "#e64980", "#12b886", "#7950f2", "#f76707", "#1098ad", "#94d82d",
+    "#d6336c", "#37b24d", "#5f3dc4", "#f59f00", "#0c8599", "#ff922b"
+  ];
   var RANDOM_MOTION_KEY = "namerenaArenaRandomMotion";
   var TONE_KEY = "namerenaArenaTone";
   var PALETTE_KEY = "namerenaArenaPalette";
@@ -131,6 +136,28 @@
     return Math.max(min, Math.min(max, v));
   }
 
+  function hslToHex(h, s, l) {
+    s /= 100;
+    l /= 100;
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = l - c / 2;
+    var r = 0;
+    var g = 0;
+    var b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    function toHex(v) {
+      var n = Math.round((v + m) * 255);
+      return (n < 16 ? "0" : "") + n.toString(16);
+    }
+    return "#" + toHex(r) + toHex(g) + toHex(b);
+  }
+
   function ArenaView(doc) {
     this.doc = doc;
     this.canvas = doc.getElementById("arenaCanvas");
@@ -161,6 +188,7 @@
     this.tone = "dark";
     this.palette = "ocean";
     this._floatReady = false;
+    this._teamColorMap = null;
     this.lastActionCaster = null;
   }
 
@@ -238,14 +266,17 @@
     this.doc.body.classList.add("arena-mode");
     this.loadThemePrefs();
     this.applyTheme(this.tone, this.palette);
-    this.logEl = this.doc.querySelector("#md5 .pbody");
+    this.logEl = this.doc.querySelector(".pbody");
     this.setupFloatingPanels();
     this.setupSidebar();
     this.setupArenaControls();
     this.setupThemePanel();
     this.setupLogScroll();
     this.resize();
+    this.ensureNarrowListVisible();
+    this._boundNarrowFix = this.ensureNarrowListVisible.bind(this);
     window.addEventListener("resize", this._boundResize);
+    window.addEventListener("resize", this._boundNarrowFix);
     this.observe();
     this.running = true;
     this.lastTime = performance.now();
@@ -253,8 +284,8 @@
   };
 
   ArenaView.prototype.ensureSidebar = function () {
-    var plist = this.doc.querySelector("#md5 .plist");
-    var pbody = this.doc.querySelector("#md5 .pbody");
+    var plist = this.doc.querySelector(".plist");
+    var pbody = this.doc.querySelector(".pbody");
     this.setupFloatingPanels();
     if (this.root && !this.root.querySelector(".arena-controls")) {
       this.setupArenaControls();
@@ -278,10 +309,11 @@
         '<span class="arena-log-hint">可上下滚动</span>';
       pbody.insertBefore(logHeader, pbody.firstChild);
     }
+    this.ensureNarrowListVisible();
   };
 
   ArenaView.prototype.setupSidebar = function () {
-    var plist = this.doc.querySelector("#md5 .plist");
+    var plist = this.doc.querySelector(".plist");
     if (!plist || plist.querySelector(".arena-plist-header")) return;
 
     var header = this.doc.createElement("div");
@@ -381,7 +413,7 @@
     var self = this;
     var win = this.doc.defaultView;
 
-    function wrapPanel(contentEl, type) {
+    function wrapPanel(contentEl, type, title) {
       if (contentEl.closest(".arena-float-panel")) return contentEl.closest(".arena-float-panel");
       var panel = self.doc.createElement("div");
       panel.className = "arena-float-panel arena-float-" + type + " collapsed";
@@ -393,6 +425,7 @@
         "</div>";
       contentEl.parentNode.insertBefore(panel, contentEl);
       panel.appendChild(contentEl);
+      panel.querySelector(".arena-float-title").textContent = title;
       panel.querySelector(".arena-float-close").addEventListener("click", function () {
         self.setFloatPanelOpen(type, false);
       });
@@ -400,8 +433,8 @@
       return panel;
     }
 
-    this._panelPlist = wrapPanel(plist, "plist");
-    this._panelLog = wrapPanel(pbody, "log");
+    this._panelPlist = wrapPanel(plist, "plist", "选手状态");
+    this._panelLog = wrapPanel(pbody, "log", "战场动向");
 
     function makeToggle(cls, label, type, x, y) {
       if (self.root.querySelector("." + cls)) return self.root.querySelector("." + cls);
@@ -437,11 +470,15 @@
   ArenaView.prototype.positionPanelNearToggle = function (panel, toggle) {
     if (!panel || !toggle) return;
     var win = this.doc.defaultView;
+    var margin = 8;
     var tr = toggle.getBoundingClientRect();
-    var pw = panel.offsetWidth || 260;
-    var left = clampNum(tr.left, 8, win.innerWidth - pw - 8);
+    var pw = panel.offsetWidth || Math.min(280, win.innerWidth - margin * 2);
+    var maxH = Math.min(win.innerHeight * 0.52, 420);
+    var left = clampNum(tr.left, margin, win.innerWidth - pw - margin);
+    if (left + pw > win.innerWidth - margin) left = win.innerWidth - pw - margin;
     var top = tr.bottom + 6;
-    if (top + 180 > win.innerHeight) top = Math.max(8, tr.top - 180);
+    if (top + maxH > win.innerHeight - margin) top = Math.max(margin, tr.top - maxH - 6);
+    if (top < margin) top = margin;
     panel.style.left = left + "px";
     panel.style.top = top + "px";
   };
@@ -454,10 +491,25 @@
       panel.classList.remove("collapsed");
       toggle.classList.add("active");
       this.positionPanelNearToggle(panel, toggle);
+      this.ensureNarrowListVisible();
     } else {
       panel.classList.add("collapsed");
       toggle.classList.remove("active");
     }
+  };
+
+  ArenaView.prototype.ensureNarrowListVisible = function () {
+    var win = this.doc.defaultView;
+    var plist = this.doc.querySelector(".plist");
+    var pbody = this.doc.querySelector(".pbody");
+    if (!win) return;
+    if (win.innerWidth >= 500) {
+      if (plist) plist.style.removeProperty("display");
+      if (pbody) pbody.style.removeProperty("display");
+      return;
+    }
+    if (plist) plist.style.setProperty("display", "block", "important");
+    if (pbody) pbody.style.setProperty("display", "block", "important");
   };
 
   ArenaView.prototype.toggleFloatPanel = function (type) {
@@ -467,9 +519,44 @@
   };
 
   ArenaView.prototype.setupThemePanel = function () {
-    if (!this.root || this.root.querySelector(".arena-theme-panel")) return;
+    if (!this.root) return;
+    var self = this;
+    var win = this.doc.defaultView;
+
+    function ensureThemeToggle() {
+      if (self.root.querySelector(".arena-toggle-theme")) {
+        self._toggleTheme = self.root.querySelector(".arena-toggle-theme");
+        return;
+      }
+      var toggle = self.doc.createElement("button");
+      toggle.type = "button";
+      toggle.className = "arena-panel-toggle arena-toggle-theme";
+      toggle.textContent = "配色主题";
+      toggle.style.borderRadius = "20px";
+      toggle.style.padding = "6px 12px";
+      self.root.appendChild(toggle);
+      var tx = Math.max(8, win.innerWidth - 96);
+      self.attachDraggable(toggle, { x: tx, y: 72, dragAnywhere: true });
+      toggle.addEventListener("click", function () {
+        if (toggle._lastDragMoved) {
+          toggle._lastDragMoved = false;
+          return;
+        }
+        self.toggleThemePanel();
+      });
+      self._toggleTheme = toggle;
+    }
+
+    var existing = this.root.querySelector(".arena-theme-panel");
+    if (existing) {
+      this._themePanel = existing;
+      if (!existing.classList.contains("collapsed")) existing.classList.add("collapsed");
+      ensureThemeToggle();
+      return;
+    }
+
     var panel = this.doc.createElement("div");
-    panel.className = "arena-theme-panel";
+    panel.className = "arena-theme-panel collapsed";
     panel.innerHTML =
       '<span class="arena-widget-drag" title="拖动">⠿</span>' +
       '<div class="arena-theme-body">' +
@@ -480,11 +567,8 @@
       '<div class="arena-theme-palettes"></div>' +
       "</div>";
     this.root.appendChild(panel);
-    var win = this.doc.defaultView;
-    panel.style.left = Math.max(8, win.innerWidth - 220) + "px";
-    panel.style.top = "8px";
     this.attachDraggable(panel, { handle: ".arena-widget-drag" });
-    var self = this;
+
     panel.querySelectorAll(".arena-theme-tones button").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var t = btn.getAttribute("data-tone") === "light" ? "light" : "dark";
@@ -493,8 +577,41 @@
       });
     });
     this._themePanel = panel;
+    ensureThemeToggle();
+
     this.renderPaletteButtons();
     this.syncThemePanel();
+  };
+
+  ArenaView.prototype.positionThemePanelNearToggle = function () {
+    var panel = this._themePanel;
+    var toggle = this._toggleTheme;
+    if (!panel || !toggle) return;
+    var win = this.doc.defaultView;
+    var tr = toggle.getBoundingClientRect();
+    var pw = panel.offsetWidth || 220;
+    var left = clampNum(tr.left, 8, win.innerWidth - pw - 8);
+    var top = tr.bottom + 6;
+    if (top + 120 > win.innerHeight) top = Math.max(8, tr.top - 120);
+    panel.style.left = left + "px";
+    panel.style.top = top + "px";
+  };
+
+  ArenaView.prototype.setThemePanelOpen = function (open) {
+    if (!this._themePanel || !this._toggleTheme) return;
+    if (open) {
+      this._themePanel.classList.remove("collapsed");
+      this._toggleTheme.classList.add("active");
+      this.positionThemePanelNearToggle();
+    } else {
+      this._themePanel.classList.add("collapsed");
+      this._toggleTheme.classList.remove("active");
+    }
+  };
+
+  ArenaView.prototype.toggleThemePanel = function () {
+    if (!this._themePanel) return;
+    this.setThemePanelOpen(this._themePanel.classList.contains("collapsed"));
   };
 
   ArenaView.prototype.renderPaletteButtons = function () {
@@ -564,11 +681,12 @@
     this.projectiles = [];
     this.effects = [];
     this.labels = [];
+    this._teamColorMap = null;
   };
 
   ArenaView.prototype.setStatsMode = function (mode) {
     this.statsMode = mode === "init" ? "init" : "live";
-    var plist = this.doc.querySelector("#md5 .plist");
+    var plist = this.doc.querySelector(".plist");
     if (plist) {
       plist.classList.toggle("arena-stats-init", this.statsMode === "init");
       plist.classList.toggle("arena-stats-live", this.statsMode === "live");
@@ -585,7 +703,7 @@
   };
 
   ArenaView.prototype.setupLogScroll = function () {
-    var el = this.logEl || this.doc.querySelector("#md5 .pbody");
+    var el = this.logEl || this.doc.querySelector(".pbody");
     if (!el) return;
     this.logEl = el;
     if (this._logScrollBound && el === this._logScrollEl) return;
@@ -600,7 +718,7 @@
 
   ArenaView.prototype.scrollLog = function () {
     if (!this.logFollow) return;
-    var el = this.logEl || this.doc.querySelector("#md5 .pbody");
+    var el = this.logEl || this.doc.querySelector(".pbody");
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   };
@@ -700,8 +818,77 @@
     }
   };
 
+  ArenaView.prototype.pickDistinctTeamColor = function (slot, used) {
+    var i;
+    var color;
+    for (i = 0; i < TEAM_PALETTE.length; i++) {
+      color = TEAM_PALETTE[i];
+      if (!used[color]) return color;
+    }
+    var hue = (slot * 137.508) % 360;
+    color = hslToHex(hue, 72, 52);
+    while (used[color]) {
+      hue = (hue + 47) % 360;
+      color = hslToHex(hue, 72, 52);
+    }
+    return color;
+  };
+
+  ArenaView.prototype.resolveTeamGroup = function (el) {
+    var node = el;
+    while (node) {
+      if (node.classList && node.classList.contains("plrg_list")) return node;
+      node = node.parentElement;
+    }
+    return null;
+  };
+
+  ArenaView.prototype.resolveTeamIndex = function (group) {
+    if (!group) return -1;
+    var plist = this.doc.querySelector(".plist");
+    if (!plist) return -1;
+    var groups = plist.querySelectorAll(".plrg_list");
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i] === group) return i;
+    }
+    return -1;
+  };
+
+  ArenaView.prototype.rebuildTeamColorMap = function () {
+    var plist = this.doc.querySelector(".plist");
+    var groups = plist ? Array.prototype.slice.call(plist.querySelectorAll(".plrg_list")) : [];
+    var used = {};
+    var map = {};
+    var i;
+
+    for (i = 0; i < groups.length; i++) {
+      var color = this.pickDistinctTeamColor(i, used);
+      used[color] = true;
+      groups[i]._arenaTeamColor = color;
+      map[String(i)] = color;
+    }
+
+    this._teamColorMap = map;
+
+    for (i = 0; i < this.playerList.length; i++) {
+      var p = this.playerList[i];
+      var g = p.teamGroup;
+      if (g && g._arenaTeamColor) {
+        p.color = g._arenaTeamColor;
+        p.team = this.resolveTeamIndex(g);
+      } else if (groups.length > 0) {
+        p.color = map["0"] || TEAM_PALETTE[0];
+        p.team = 0;
+      } else {
+        p.color = TEAM_PALETTE[0];
+        p.team = 0;
+      }
+    }
+  };
+
   ArenaView.prototype.colorForTeam = function (team) {
-    return TEAM_COLORS[Math.abs(team | 0) % TEAM_COLORS.length];
+    if (!this._teamColorMap) this.rebuildTeamColorMap();
+    return this._teamColorMap[String(team | 0)] || TEAM_PALETTE[0];
   };
 
   ArenaView.prototype.registerPlayer = function (el) {
@@ -718,24 +905,23 @@
     }
     var key = pidClass || name;
     if (this.players[key]) {
+      this.players[key].teamGroup = this.resolveTeamGroup(el);
+      this.players[key].team = this.resolveTeamIndex(this.players[key].teamGroup);
+      if (this.players[key].team < 0) this.players[key].team = 0;
       this.syncHp(this.players[key], el);
+      this.rebuildTeamColorMap();
       return;
     }
     var detailEl = el.querySelector(".detail");
     var isBoss = detailEl != null;
-    var team = 0;
-    var parent = el.parentElement;
-    while (parent) {
-      if (parent.classList && parent.classList.contains("plrg_list")) {
-        team = Array.prototype.indexOf.call(parent.parentElement.children, parent);
-        break;
-      }
-      parent = parent.parentElement;
-    }
+    var teamGroup = this.resolveTeamGroup(el);
+    var team = this.resolveTeamIndex(teamGroup);
+    if (team < 0) team = 0;
     var p = {
       key: key,
       name: name,
       el: el,
+      teamGroup: teamGroup,
       detail: detailEl ? detailEl.textContent.replace(/\s+/g, " ").trim() : "",
       x: this.w / 2,
       y: this.h / 2,
@@ -747,7 +933,7 @@
       alive: true,
       placed: false,
       team: team,
-      color: this.colorForTeam(team),
+      color: TEAM_PALETTE[0],
       aura: null,
       dying: false,
       dieTimer: 0,
@@ -759,6 +945,7 @@
     this.playerList.push(p);
     this.syncHp(p, el);
     this.captureInitialStats(p, el);
+    this.rebuildTeamColorMap();
     this.layoutPlayers(true);
   };
 
@@ -1174,7 +1361,7 @@
 
   ArenaView.prototype.scanForWinner = function () {
     if (this.battleEnded) return;
-    var pbody = this.doc.querySelector("#md5 .pbody");
+    var pbody = this.doc.querySelector(".pbody");
     if (!pbody) return;
     var us = pbody.querySelectorAll(LOG_ROW_SELECTOR);
     for (var i = us.length - 1; i >= 0; i--) {
