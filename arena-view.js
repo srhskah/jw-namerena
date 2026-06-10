@@ -2194,33 +2194,144 @@
     ctx.globalAlpha = alpha;
   };
 
+  ArenaView.prototype.nameScriptKind = function (ch) {
+    var c = ch.charCodeAt(0);
+    if (/\s/.test(ch)) return "ws";
+    if (/[\/\\|·•\-\—–()]/.test(ch)) return "brk";
+    if (c >= 0x4e00 && c <= 0x9fff) return "cjk";
+    if (c >= 0x3400 && c <= 0x4dbf) return "cjk";
+    if (c >= 0xf900 && c <= 0xfaff) return "cjk";
+    if (c >= 0x3040 && c <= 0x30ff) return "kana";
+    if (c >= 0xac00 && c <= 0xd7af) return "kr";
+    if ((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)) return "lat";
+    if (c >= 0x30 && c <= 0x39) return "lat";
+    return "oth";
+  };
+
+  ArenaView.prototype.tokenizeNameForWrap = function (name) {
+    var tokens = [];
+    var buf = "";
+    var prevKind = null;
+    var self = this;
+
+    function flush() {
+      if (buf) {
+        tokens.push(buf);
+        buf = "";
+      }
+    }
+
+    for (var i = 0; i < name.length; i++) {
+      var ch = name[i];
+      var kind = self.nameScriptKind(ch);
+      if (kind === "ws" || kind === "brk") {
+        flush();
+        tokens.push("\n");
+        prevKind = null;
+        continue;
+      }
+      if (prevKind && kind !== prevKind && kind !== "oth" && prevKind !== "oth") {
+        flush();
+      }
+      buf += ch;
+      if (kind !== "oth") prevKind = kind;
+    }
+    flush();
+    return tokens.length ? tokens : [name];
+  };
+
+  ArenaView.prototype.wrapNameLines = function (ctx, name, maxWidth) {
+    var tokens = this.tokenizeNameForWrap(name);
+    var lines = [];
+    var line = "";
+
+    function pushLine() {
+      var trimmed = line.replace(/^\s+|\s+$/g, "");
+      if (trimmed) lines.push(trimmed);
+      line = "";
+    }
+
+    function appendSegment(seg) {
+      var test = line ? line + seg : seg;
+      if (ctx.measureText(test).width <= maxWidth) {
+        line = test;
+        return;
+      }
+      if (line) pushLine();
+      if (ctx.measureText(seg).width <= maxWidth) {
+        line = seg;
+        return;
+      }
+      for (var i = 0; i < seg.length; i++) {
+        var next = line + seg.charAt(i);
+        if (ctx.measureText(next).width > maxWidth && line) {
+          pushLine();
+          line = seg.charAt(i);
+        } else {
+          line = next;
+        }
+      }
+    }
+
+    for (var t = 0; t < tokens.length; t++) {
+      if (tokens[t] === "\n") {
+        pushLine();
+        continue;
+      }
+      appendSegment(tokens[t]);
+    }
+    pushLine();
+    return lines.length ? lines : [name];
+  };
+
   ArenaView.prototype.drawNameLabel = function (ctx, p, alpha) {
     var th = this.readCanvasTheme();
-    var label = p.name.length > 8 ? p.name.substring(0, 7) + "…" : p.name;
-    ctx.font = (p.isBoss ? "bold 12px" : "11px") + " Microsoft YaHei, sans-serif";
+    var fontSize = p.isBoss ? 12 : 11;
+    var font = (p.isBoss ? "bold " : "") + fontSize + "px Microsoft YaHei, sans-serif";
+    ctx.font = font;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
+
+    var maxWidth = Math.min(200, Math.max(96, (this.w - PAD * 2) * 0.38));
+    var lines = this.wrapNameLines(ctx, p.name, maxWidth);
+    var lineHeight = fontSize + 3;
+    var padX = 6;
+    var padY = 4;
+    var maxLineW = 0;
+    for (var i = 0; i < lines.length; i++) {
+      maxLineW = Math.max(maxLineW, ctx.measureText(lines[i]).width);
+    }
+
+    var boxW = maxLineW + padX * 2;
+    var boxH = lines.length * lineHeight + padY * 2 - 2;
     var nameY = p.y - p.r - 6;
-    var tw = ctx.measureText(label).width + 10;
+    var bx = p.x - boxW / 2;
+    var by = nameY - boxH + padY;
+
     ctx.globalAlpha = alpha * 0.85;
     ctx.fillStyle = th.labelBg;
     ctx.strokeStyle = p.isBoss ? th.labelBoss : th.labelStroke;
     ctx.lineWidth = p.isBoss ? 1.5 : 1;
     var rx = 4;
-    var bx = p.x - tw / 2;
-    var by = nameY - 15;
     ctx.beginPath();
     ctx.moveTo(bx + rx, by);
-    ctx.lineTo(bx + tw - rx, by);
-    ctx.quadraticCurveTo(bx + tw, by, bx + tw, by + 15);
-    ctx.lineTo(bx + rx, by + 15);
-    ctx.quadraticCurveTo(bx, by + 15, bx, by);
+    ctx.lineTo(bx + boxW - rx, by);
+    ctx.quadraticCurveTo(bx + boxW, by, bx + boxW, by + rx);
+    ctx.lineTo(bx + boxW, by + boxH - rx);
+    ctx.quadraticCurveTo(bx + boxW, by + boxH, bx + boxW - rx, by + boxH);
+    ctx.lineTo(bx + rx, by + boxH);
+    ctx.quadraticCurveTo(bx, by + boxH, bx, by + boxH - rx);
+    ctx.lineTo(bx, by + rx);
+    ctx.quadraticCurveTo(bx, by, bx + rx, by);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
     ctx.globalAlpha = alpha;
     ctx.fillStyle = p.isBoss ? th.labelBoss : th.labelText;
-    ctx.fillText(label, p.x, nameY);
+    for (var j = 0; j < lines.length; j++) {
+      ctx.fillText(lines[j], p.x, nameY - (lines.length - 1 - j) * lineHeight);
+    }
   };
 
   ArenaView.prototype.draw = function () {
