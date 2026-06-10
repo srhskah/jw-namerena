@@ -20,13 +20,17 @@
         height:100%;
       }
       *{
-        font-family: "Microsoft YaHei", Consolas, Menlo, Monaco, "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace, serif;
+        font-family: Noto Sans CJK, "Microsoft YaHei", Consolas, Menlo, Monaco, "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace, serif;
       }
 
       .picon {
         width: 28px;
         height: 28px;
         position: relative;
+      }
+
+      .picon.viewModeToggle{
+        left: 0.75em;
       }
 
       .micon {
@@ -43,34 +47,48 @@
       }
 
       .fastforward {
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(224,112,0)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z'/%3E%3C/svg%3E");
       }
       .share {
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(0,112,224)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z'/%3E%3C/svg%3E");
       }
       .refresh {
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(0,144,144)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
       }
       .viewmode {
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5h18v2H3V5zm0 6h12v2H3v-2zm0 6h18v2H3v-2z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(0,0,224)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5h18v2H3V5zm0 6h12v2H3v-2zm0 6h18v2H3v-2z'/%3E%3C/svg%3E");
+        /* left: 0.075em;
+        top: 0.075em; */
+        left: 10%;
+        top: 10%;
       }
       .viewmode.arena-active {
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='7' cy='8' r='3'/%3E%3Ccircle cx='17' cy='16' r='3'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cpath d='M3 20 L10 10 L14 14 L21 4' stroke='white' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(0,224,0)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='7' cy='8' r='3'/%3E%3Ccircle cx='17' cy='16' r='3'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cpath d='M3 20 L10 10 L14 14 L21 4' stroke='white' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+        /* left: 0.075em;
+        top: 0.075em; */
+        left: 10%;
+        top: 10%;
       }
+
+      .picon .viewmode.arena-active{
+        left: 0.075em;
+        top: 0.075em;
+      }
+      
       .add {
         left: 1px;
         top: 1px;
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(0,176,176)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E");
       }
       .rightarrow {
         left: 1px;
         top: 1px;
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='rgb(0,160,255)' height='24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z'/%3E%3C/svg%3E");
       }
       .close {
         left: 1px;
         top: 1px;
-        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml;utf8, %3Csvg fill='red' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E");
       }
 
       div {
@@ -100,7 +118,7 @@
       }
       .panel {
         position: absolute;
-        width: 360px;
+        width: 372px;
         min-height: 360px;
         max-height: 480px;
         margin: auto;
@@ -110,9 +128,9 @@
         top:0;
         box-shadow: 0px 0px 5px 0px rgba(50, 50, 50, 0.75);
 
-        background: #6cc4ec;
-        background: linear-gradient(100deg, #6cc4ec 0%, #2AA2D6 100%);
-        border-radius: 10px;
+        /* background: #6cc4ec; */
+        background: linear-gradient(100deg, #c4ecff 0%, #A2D6ff 100%);
+        border-radius: 1.5em;
 
         padding: 8px;
         padding-top: 0;
@@ -156,11 +174,13 @@
 
       .spacer {
         flex: 1 1 auto;
+        opacity: 0.8;
       }
 
 
       .paneltitle {
-        color: #FFF;
+        color: #48c;
+        font-weight: bolder;
         white-space: pre;
         text-align: center;
       }
@@ -174,24 +194,25 @@
         position: absolute;
         top:0;
         bottom:0;
+        left: 7px;
         height: 100%;
         width: 344px;
         resize: none;
         box-sizing: border-box;
         box-shadow: inset 0px 0px 3px 0px rgba(50, 50, 50, 0.5);
         border: none;
-        padding: 5px;
-        border-radius: 5px;
+        padding: 1em;
+        border-radius: 1em;
       }
 
       button,.button {
-        background: #888;
+        /* background: #888; */
         border: solid white 1px;
         border-radius: 20px;
         font-style: normal;
         font-size: 16px;
         padding: 4px 8px;
-        color: #fff;
+        color: #48c;
         cursor: pointer;
         box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.25);
         outline:none;
@@ -203,12 +224,13 @@
       }
       .goBar {
         width:100%;
-        height:30px;
+        height:2.4em;
+        padding-top: 0.2em;
       }
       .goBtn {
         font-weight: bold;
         font-size: 16px;
-        width: 100px;
+        width: 4em;
         position:absolute;
         left:0;
         right:0;
@@ -225,9 +247,10 @@
         margin:0;
       }
 
-
       div.checkBoss {
-        color: #fff;
+        color: #48c;
+        top:0;
+        font-weight: bolder;
         padding-left: 24px;
         line-height: 23px;
         position:relative;
@@ -296,7 +319,7 @@
         margin:4px;
       }
       .bossName {
-        color: #fff;
+        color: #48c;
         text-align: center;
       }
       .showBossBtn {
@@ -746,7 +769,7 @@
             <div class='spacer'></div>
             <div class='showBossBtn horizontal button' class='picon'>
               <div class='bossSgl'></div>
-              <div class='bossName spacer'></div>
+              <div class='bossName spacer' style="opacity: 0.8;"></div>
               <div class="svgicon rightarrow"></div>
             </div>
            </div>
